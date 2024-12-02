@@ -34,8 +34,18 @@ func cloneAndInstall(repoURL string) error {
 		return fmt.Errorf("error cloning repository: %v", err)
 	}
 
-	// Step 5: Change directory to the cloned tool directory
-	if err := os.Chdir(toolName); err != nil {
+	// Step 5: Determine the directory containing the main package
+	clonedDir := filepath.Join(originalDir, toolName)
+
+	// Check if a `cmd/<toolName>` directory exists
+	cmdDir := filepath.Join(clonedDir, "cmd", toolName)
+	if _, err := os.Stat(cmdDir); err == nil {
+		// Use the `cmd/<toolName>` directory
+		if err := os.Chdir(cmdDir); err != nil {
+			return fmt.Errorf("error changing directory to cmd/<toolName>: %v", err)
+		}
+	} else if err := os.Chdir(clonedDir); err != nil {
+		// Fallback to the root directory if `cmd/<toolName>` doesn't exist
 		return fmt.Errorf("error changing directory: %v", err)
 	}
 
