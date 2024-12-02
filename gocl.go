@@ -71,7 +71,7 @@ func cloneAndInstall(repoURL string) error {
 }
 
 func main() {
-	// Define the -i or --input flag
+	// Define the flags
 	inputFlag := pflag.StringP("input", "i", "", "URL or file containing URLs of the repository to install")
 
 	// Parse the flags
