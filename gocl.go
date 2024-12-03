@@ -11,6 +11,13 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// prints the version message
+const version = "v0.0.1"
+
+func PrintVersion() {
+	fmt.Printf("Current gocl version %s\n", version)
+}
+
 func cloneAndInstall(repoURL string) error {
 	// Step 1: Add https:// to the URL if missing
 	if !strings.HasPrefix(repoURL, "https://") {
@@ -27,7 +34,7 @@ func cloneAndInstall(repoURL string) error {
 	}
 
 	// Step 4: Clone the repository (silent)
-	cmd := exec.Command("git", "clone", repoURL)
+	cmd := exec.Command("git", "clone", "--depth", "1", repoURL)
 	cmd.Stdout = nil // Suppress output
 	cmd.Stderr = nil // Suppress error
 	if err := cmd.Run(); err != nil {
@@ -73,13 +80,22 @@ func cloneAndInstall(repoURL string) error {
 func main() {
 	// Define the flags
 	inputFlag := pflag.StringP("input", "i", "", "URL or file containing URLs of the repository to install")
-
-	// Parse the flags
+	versionFlag := pflag.Bool("version", false, "Print the version of the tool and exit.")
 	pflag.Parse()
+
+	if *versionFlag {
+		PrintVersion()
+		return
+	}
 
 	// Check if the input flag is set
 	if *inputFlag == "" {
-		fmt.Println("Usage: gocl -i repo-url/file-with-urls")
+		fmt.Println("Usage:")
+		fmt.Println(" gocl -i github.com/rix4uni/gocl")
+		fmt.Println(" gocl -i urls.txt")
+		fmt.Println("\nurls.txt:")
+		fmt.Println(" github.com/rix4uni/gocl")
+		fmt.Println(" github.com/rix4uni/unew")
 		return
 	}
 
