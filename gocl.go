@@ -12,7 +12,7 @@ import (
 )
 
 // prints the version message
-const version = "v0.0.1"
+const version = "v0.0.2"
 
 func PrintVersion() {
 	fmt.Printf("Current gocl version %s\n", version)
@@ -27,14 +27,16 @@ func cloneAndInstall(repoURL string) error {
 	// Step 2: Extract the last part of the URL to determine the tool name
 	toolName := filepath.Base(repoURL)
 
-	// Step 3: Get the current directory to return to it later
-	originalDir, err := os.Getwd()
+	// Step 3: Create a temporary directory
+	tempDir, err := os.MkdirTemp("", "gocl_*")
 	if err != nil {
-		return fmt.Errorf("error getting original directory: %v", err)
+		return fmt.Errorf("error creating temporary directory: %v", err)
 	}
+	defer os.RemoveAll(tempDir) // Clean up the temporary directory afterward
 
-	// Step 4: Clone the repository (silent)
-	cmd := exec.Command("git", "clone", "--depth", "1", repoURL)
+	// Step 4: Clone the repository into the temporary directory
+	clonePath := filepath.Join(tempDir, toolName)
+	cmd := exec.Command("git", "clone", "--depth", "1", repoURL, clonePath)
 	cmd.Stdout = nil // Suppress output
 	cmd.Stderr = nil // Suppress error
 	if err := cmd.Run(); err != nil {
@@ -42,16 +44,14 @@ func cloneAndInstall(repoURL string) error {
 	}
 
 	// Step 5: Determine the directory containing the main package
-	clonedDir := filepath.Join(originalDir, toolName)
-
 	// Check if a `cmd/<toolName>` directory exists
-	cmdDir := filepath.Join(clonedDir, "cmd", toolName)
+	cmdDir := filepath.Join(clonePath, "cmd", toolName)
 	if _, err := os.Stat(cmdDir); err == nil {
 		// Use the `cmd/<toolName>` directory
 		if err := os.Chdir(cmdDir); err != nil {
 			return fmt.Errorf("error changing directory to cmd/<toolName>: %v", err)
 		}
-	} else if err := os.Chdir(clonedDir); err != nil {
+	} else if err := os.Chdir(clonePath); err != nil {
 		// Fallback to the root directory if `cmd/<toolName>` doesn't exist
 		return fmt.Errorf("error changing directory: %v", err)
 	}
@@ -62,16 +62,6 @@ func cloneAndInstall(repoURL string) error {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running go install: %v", err)
-	}
-
-	// Step 7: Change back to the original directory
-	if err := os.Chdir(originalDir); err != nil {
-		return fmt.Errorf("error returning to original directory: %v", err)
-	}
-
-	// Step 8: Remove the cloned repository (silent)
-	if err := os.RemoveAll(toolName); err != nil {
-		return fmt.Errorf("error removing cloned repository: %v", err)
 	}
 
 	return nil
