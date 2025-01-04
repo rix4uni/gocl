@@ -3,19 +3,38 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/pflag"
 )
 
 // prints the version message
-const version = "v0.0.2"
+const version = "v0.0.3"
 
 func PrintVersion() {
 	fmt.Printf("Current gocl version %s\n", version)
+}
+
+// validateRepoURL checks if the repository URL is reachable.
+func validateRepoURL(repoURL string) error {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Get(repoURL)
+	if err != nil {
+		return fmt.Errorf("repository validation failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("repository validation failed: received status code %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func cloneAndInstall(repoURL, customPath string) error {
@@ -24,16 +43,21 @@ func cloneAndInstall(repoURL, customPath string) error {
 		repoURL = "https://" + repoURL
 	}
 
-	// Step 2: Extract the last part of the URL to determine the tool name
+	// Step 2: Validate the repository URL
+	if err := validateRepoURL(repoURL); err != nil {
+		return fmt.Errorf("repository %q is invalid or inaccessible: %v", repoURL, err)
+	}
+
+	// Step 3: Extract the last part of the URL to determine the tool name
 	toolName := filepath.Base(repoURL)
 
-	// Step 3: Get the current directory to return to it later
+	// Step 4: Get the current directory to return to it later
 	originalDir, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("error getting original directory: %v", err)
 	}
 
-	// Step 4: Clone the repository (silent)
+	// Step 5: Clone the repository (silent)
 	cmd := exec.Command("git", "clone", "--depth", "1", repoURL)
 	cmd.Stdout = nil // Suppress output
 	cmd.Stderr = nil // Suppress error
@@ -41,7 +65,7 @@ func cloneAndInstall(repoURL, customPath string) error {
 		return fmt.Errorf("error cloning repository: %v", err)
 	}
 
-	// Step 5: Determine the directory to use
+	// Step 6: Determine the directory to use
 	clonedDir := filepath.Join(originalDir, toolName)
 	v2CmdDir := filepath.Join(clonedDir, "v2", "cmd", toolName)
 	cmdDir := filepath.Join(clonedDir, "cmd", toolName)
@@ -71,7 +95,7 @@ func cloneAndInstall(repoURL, customPath string) error {
 	    return fmt.Errorf("error changing directory to root: %v", err)
 	}
 
-	// Step 6: Check if go.sum exists, and run go mod tidy if not
+	// Step 7: Check if go.sum exists, and run go mod tidy if not
 	if _, err := os.Stat("go.sum"); os.IsNotExist(err) {
 	    cmd = exec.Command("go", "mod", "tidy")
 	    cmd.Stdout = os.Stdout
@@ -79,7 +103,7 @@ func cloneAndInstall(repoURL, customPath string) error {
 	    if err := cmd.Run(); err != nil {
 	        return fmt.Errorf("error running go mod tidy: %v", err)
 
-	        // Step 7: Check if go.mod exists, and run go mod init if not
+	        // Step 8: Check if go.mod exists, and run go mod init if not
 			if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
 			    modulePath := strings.TrimPrefix(repoURL, "https://")
 			    cmd = exec.Command("go", "mod", "init", modulePath)
@@ -92,7 +116,7 @@ func cloneAndInstall(repoURL, customPath string) error {
 	    }
 	}
 
-	// Step 8: Run go install and display output
+	// Step 9: Run go install and display output
 	cmd = exec.Command("go", "install")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -100,12 +124,12 @@ func cloneAndInstall(repoURL, customPath string) error {
 		return fmt.Errorf("error running go install: %v", err)
 	}
 
-	// Step 9: Change back to the original directory
+	// Step 10: Change back to the original directory
 	if err := os.Chdir(originalDir); err != nil {
 		return fmt.Errorf("error returning to original directory: %v", err)
 	}
 
-	// Step 10: Remove the cloned repository (silent)
+	// Step 11: Remove the cloned repository (silent)
 	if err := os.RemoveAll(toolName); err != nil {
 		return fmt.Errorf("error removing cloned repository: %v", err)
 	}
