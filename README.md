@@ -9,9 +9,9 @@ go install github.com/rix4uni/gocl@latest
 
 ## Download prebuilt binaries
 ```
-wget https://github.com/rix4uni/gocl/releases/download/v0.0.1/gocl-linux-amd64-0.0.1.tgz
-tar -xvzf gocl-linux-amd64-0.0.1.tgz
-rm -rf gocl-linux-amd64-0.0.1.tgz
+wget https://github.com/rix4uni/gocl/releases/download/v0.0.2/gocl-linux-amd64-0.0.2.tgz
+tar -xvzf gocl-linux-amd64-0.0.2.tgz
+rm -rf gocl-linux-amd64-0.0.2.tgz
 mv gocl ~/go/bin/gocl
 ```
 Or download [binary release](https://github.com/rix4uni/gocl/releases) for your platform.
@@ -35,9 +35,13 @@ Usage:
  gocl -i github.com/rix4uni/gocl
  gocl -i urls.txt
 
+Custom Path:
+ gocl -i github.com/projectdiscovery/chaos-client -c "cmd/chaos"
+
 urls.txt:
  github.com/rix4uni/gocl
  github.com/rix4uni/unew
+ github.com/rix4uni/Gxss
 ```
 
 #### You can do this manually but you need to run 3 commands
