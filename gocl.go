@@ -101,18 +101,28 @@ func cloneAndInstall(repoURL, customPath string) error {
 	    cmd.Stdout = os.Stdout
 	    cmd.Stderr = os.Stderr
 	    if err := cmd.Run(); err != nil {
-	        return fmt.Errorf("error running go mod tidy: %v", err)
+	        fmt.Printf("go mod tidy failed: %v\n", err)
 
 	        // Step 8: Check if go.mod exists, and run go mod init if not
-			if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
-			    modulePath := strings.TrimPrefix(repoURL, "https://")
-			    cmd = exec.Command("go", "mod", "init", modulePath)
-			    cmd.Stdout = os.Stdout
-			    cmd.Stderr = os.Stderr
-			    if err := cmd.Run(); err != nil {
-			        return fmt.Errorf("error running go mod init: %v", err)
-			    }
-			}
+	        if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
+	            modulePath := strings.TrimPrefix(repoURL, "https://")
+	            cmd = exec.Command("go", "mod", "init", modulePath)
+	            cmd.Stdout = os.Stdout
+	            cmd.Stderr = os.Stderr
+	            if err := cmd.Run(); err != nil {
+	                return fmt.Errorf("error running go mod init: %v", err)
+	            }
+
+	            // Retry go mod tidy after initializing go.mod
+	            cmd = exec.Command("go", "mod", "tidy")
+	            cmd.Stdout = os.Stdout
+	            cmd.Stderr = os.Stderr
+	            if err := cmd.Run(); err != nil {
+	                return fmt.Errorf("error running go mod tidy after go mod init: %v", err)
+	            }
+	        } else {
+	            return fmt.Errorf("error: go.mod exists but go mod tidy failed: %v", err)
+	        }
 	    }
 	}
 

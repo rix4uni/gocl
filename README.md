@@ -9,9 +9,9 @@ go install github.com/rix4uni/gocl@latest
 
 ## Download prebuilt binaries
 ```
-wget https://github.com/rix4uni/gocl/releases/download/v0.0.2/gocl-linux-amd64-0.0.2.tgz
-tar -xvzf gocl-linux-amd64-0.0.2.tgz
-rm -rf gocl-linux-amd64-0.0.2.tgz
+wget https://github.com/rix4uni/gocl/releases/download/v0.0.4/gocl-linux-amd64-0.0.4.tgz
+tar -xvzf gocl-linux-amd64-0.0.4.tgz
+rm -rf gocl-linux-amd64-0.0.4.tgz
 mv gocl ~/go/bin/gocl
 ```
 Or download [binary release](https://github.com/rix4uni/gocl/releases) for your platform.
