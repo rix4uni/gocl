@@ -37,7 +37,7 @@ func validateRepoURL(repoURL string) error {
 	return nil
 }
 
-func cloneAndInstall(repoURL, customPath, location string) error {
+func cloneAndInstall(repoURL, customPath, location, outputName string) error {
 	// Step 1: Remove version specifiers (e.g., @latest) from the URL
 	if idx := strings.Index(repoURL, "@"); idx != -1 {
 		repoURL = repoURL[:idx]
@@ -60,6 +60,27 @@ func cloneAndInstall(repoURL, customPath, location string) error {
 	originalDir, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("error getting original directory: %v", err)
+	}
+
+	// Step 5.5: Resolve location path relative to original directory (before changing dirs)
+	var resolvedLocation string
+	if location != "" {
+		// Determine the binary name (use outputName if provided, otherwise toolName)
+		binaryName := toolName
+		if outputName != "" {
+			binaryName = outputName
+		}
+
+		// Resolve location path (always treat as directory)
+		if filepath.IsAbs(location) {
+			resolvedLocation = filepath.Join(location, binaryName)
+		} else {
+			resolvedLocation = filepath.Join(originalDir, location, binaryName)
+		}
+		// Create directory if it doesn't exist
+		if err := os.MkdirAll(filepath.Dir(resolvedLocation), 0755); err != nil {
+			return fmt.Errorf("error creating output directory: %v", err)
+		}
 	}
 
 	// Step 6: Clone the repository (silent)
@@ -133,23 +154,14 @@ func cloneAndInstall(repoURL, customPath, location string) error {
 
 	// Step 10: Build or install the binary
 	if location != "" {
-		// Use go build to save binary to specific location
-		outputPath := location
-		// If location is a directory, append the tool name
-		if info, err := os.Stat(location); err == nil && info.IsDir() {
-			outputPath = filepath.Join(location, toolName)
-		}
-		// Create parent directory if it doesn't exist
-		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-			return fmt.Errorf("error creating output directory: %v", err)
-		}
-		cmd = exec.Command("go", "build", "-o", outputPath)
+		// Use go build to save binary to specific location (use resolved absolute path)
+		cmd = exec.Command("go", "build", "-o", resolvedLocation)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("error running go build: %v", err)
 		}
-		fmt.Printf("Binary saved to: %s\n", outputPath)
+		fmt.Printf("Binary saved to: %s\n", resolvedLocation)
 	} else {
 		// Use go install (default behavior)
 		cmd = exec.Command("go", "install")
@@ -177,7 +189,8 @@ func main() {
 	// Define the flags
 	inputFlag := pflag.StringP("input", "i", "", "URL or file containing URLs of the repository to install")
 	customPathFlag := pflag.StringP("custom-path", "c", "", "Custom path to use for installation (e.g., cmd/interactsh-client).")
-	locationFlag := pflag.StringP("location", "l", "", "Specific location to save the binary file (uses go build instead of go install).")
+	locationFlag := pflag.StringP("location", "l", "", "Directory to save the binary file (uses go build instead of go install).")
+	outputFlag := pflag.StringP("output", "o", "", "Custom name for the output binary file (only used with --location).")
 	versionFlag := pflag.Bool("version", false, "Print the version of the tool and exit.")
 	pflag.Parse()
 
@@ -191,8 +204,8 @@ func main() {
 		fmt.Println("Usage:")
 		fmt.Println(" gocl -i github.com/rix4uni/gocl")
 		fmt.Println(" gocl -i github.com/projectdiscovery/interactsh -c cmd/interactsh-client")
-		fmt.Println(" gocl -i github.com/rix4uni/gocl -l /path/to/binary")
-		fmt.Println(" gocl -i github.com/rix4uni/gocl -l /path/to/directory")
+		fmt.Println(" gocl -i github.com/rix4uni/gocl -l ./bin")
+		fmt.Println(" gocl -i github.com/rix4uni/ipfinder -l ./bin -o custom-name")
 		fmt.Println(" gocl -i urls.txt")
 		fmt.Println("\nurls.txt:")
 		fmt.Println(" github.com/rix4uni/gocl")
@@ -214,8 +227,8 @@ func main() {
 		for scanner.Scan() {
 			repoURL := strings.TrimSpace(scanner.Text())
 			if repoURL != "" {
-				// Call cloneAndInstall for each URL with the custom path and location
-				if err := cloneAndInstall(repoURL, *customPathFlag, *locationFlag); err != nil {
+				// Call cloneAndInstall for each URL with the custom path, location, and output name
+				if err := cloneAndInstall(repoURL, *customPathFlag, *locationFlag, *outputFlag); err != nil {
 					fmt.Println("Error:", err)
 				}
 			}
@@ -226,7 +239,7 @@ func main() {
 	} else {
 		// If it's a URL, process it directly
 		repoURL := *inputFlag
-		if err := cloneAndInstall(repoURL, *customPathFlag, *locationFlag); err != nil {
+		if err := cloneAndInstall(repoURL, *customPathFlag, *locationFlag, *outputFlag); err != nil {
 			fmt.Println("Error:", err)
 		}
 	}
