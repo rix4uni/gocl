@@ -43,6 +43,9 @@ func cloneAndInstall(repoURL, customPath, location, outputName string) error {
 		repoURL = repoURL[:idx]
 	}
 
+	// Step 1.5: Remove .git suffix if present
+	repoURL = strings.TrimSuffix(repoURL, ".git")
+
 	// Step 2: Add https:// to the URL if missing
 	if !strings.HasPrefix(repoURL, "https://") {
 		repoURL = "https://" + repoURL
